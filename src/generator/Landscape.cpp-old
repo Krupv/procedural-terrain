@@ -1,0 +1,363 @@
+#include "Landscape.hpp"
+
+
+//TMP
+#include <SFML/System.hpp>
+
+#include "../rendering/Material.hpp"
+#include "../entity/Skydome.hpp"
+
+
+
+
+// PUBLIC
+//------------------------------------------------------------------------------
+
+void set()
+{
+
+}
+////////////////////////////////////////////////////////////////////////////////
+// CONSTRUCTOR
+////////////////////////////////////////////////////////////////////////////////
+Landscape::Landscape ( const std::string& _luaFile , IEntity* _observer ) : IEntity(_observer)
+{
+	float posX = 0.f;
+	float posZ = 0.f;
+
+	Lua lua(_luaFile);
+
+	m_cellSize = lua.getFloat("cell.size", DEF_CELL_SIZE);
+	m_cellHigh = lua.getFloat("cell.height", DEF_CELL_HEIGHT);
+	m_cellResolution = lua.getInt("cell.resolution", DEF_CELL_RES);
+
+	if (lua.tableExists("material"))
+	{
+		Texture t1(lua.getStr("material.texture.low", "images/fallback.jpg"), GL_LINEAR_MIPMAP_LINEAR);
+		Texture t2(lua.getStr("material.texture.hight", "images/fallback.jpg"), GL_LINEAR_MIPMAP_LINEAR);
+		float texScale = lua.getFloat("material.scale", 1.f);
+		Material mat( glm::vec3 (1.0, 1.0, 1.0), texScale);
+		mat.addTexture(t1);
+		mat.addTexture(t2);
+		this->setMaterial(mat);
+	}
+
+	m_noise = new PerlinNoise(_luaFile);
+
+	if (_observer)
+	{
+		_observer->addChild(this);
+		this->setTransParent(nullptr);
+		glm::vec3 pos = _observer->getAbsolutePos();
+		posX = pos.x;
+		posZ = pos.z;
+	}
+
+	m_skydome = new Skydome("dome.obj", "sky.png");
+	_observer->addChild(m_skydome); // add skydome under camera
+	m_skydome->setTransParent(nullptr); //we dont want the skydome to rotate etc with the camera
+										// only to copy its position which solves update func
+
+	
+	for ( int ix = 0; ix < LAN_SIZE  ; ix++ )
+		for ( int iz = 0; iz < LAN_SIZE  ; iz++ )
+		{
+			m_terrain[ix][iz] = std::make_unique<Chunk>((m_cellSize * ix) + posX, (m_cellSize * iz) + posZ, m_cellResolution, m_cellSize, m_noise);
+				//;
+			m_mutexes[ix][iz] = new std::mutex();
+		}
+	// m_mutex = new std::mutex();
+				//m_terrain[1][1] = std::unique_ptr<Chunk>(new Chunk(1, 1, 32, DFLT_HEIGH, DFLT_SIZE ));
+	
+	updateThread = std::thread(&set);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// DESTRUCTOR
+////////////////////////////////////////////////////////////////////////////////
+Landscape::~Landscape ()
+{
+	aa = false;
+	updateThread.join();
+	//for ( int i = 0; i < LAN_SIZE; i++ )
+	//{
+	//	for ( int j = 0; j < LAN_SIZE; j++ )
+	//	{
+	//		if (m_terrain)
+	//			delete m_terrain[i][j];
+	//	}
+	//}
+}
+
+
+
+
+// PRIVATE
+//------------------------------------------------------------------------------
+
+void Landscape::moveX(float _distance, const glm::vec3& _pos)
+{
+	if (_distance >= 0.f)
+	{
+		for ( int iz = 0; iz < m_cellCount ; iz++ )
+		{
+			std::lock_guard<std::mutex> lock(*m_mutexes[0][iz]);
+			// m_mutexes[0][iz]->lock();
+			m_terrain[0][iz].reset();
+			// m_mutexes[0][iz]->unlock();
+		}
+
+		// move one row (X)
+		for ( int ix = 0; ix < m_cellCount - 1; ix++ )
+			for ( int iz = 0; iz < m_cellCount ; iz++ )
+			{
+				std::lock_guard<std::mutex> lock(*m_mutexes[ix][iz]);
+				std::lock_guard<std::mutex> lock2(*m_mutexes[ix+1][iz]);
+				// m_mutexes[ix][iz]->lock();
+				// m_mutexes[ix+1][iz]->lock();
+				m_terrain[ix][iz] = std::move(m_terrain[ix+1][iz]);
+				// m_mutexes[ix+1][iz]->unlock();
+				// m_mutexes[ix][iz]->unlock();
+			}
+
+		//fill the last X row
+		for ( int iz = 0; iz < m_cellCount ; iz++ )
+		{
+			std::lock_guard<std::mutex> lock(*m_mutexes[m_cellCount - 1][iz]);
+			// m_mutexes[m_cellCount - 1][iz]->lock();
+			m_terrain[m_cellCount - 1][iz] = std::make_unique<Chunk>(m_terrain[m_cellCount -2][iz]->getTransform()->getAbsolutePos().x + m_cellSize,  m_terrain[m_cellCount -2][iz]->getTransform()->getAbsolutePos().z , m_cellResolution, m_cellSize, m_noise);
+			// m_mutexes[m_cellCount - 1][iz]->lock();
+			
+		}
+	}
+	else
+	{
+		for ( int iz = 0; iz < m_cellCount ; iz++ )
+		{
+			std::lock_guard<std::mutex> lock(*m_mutexes[m_cellCount - 1][iz]);
+			// m_mutexes[m_cellCount - 1][iz]->lock();
+			m_terrain[m_cellCount - 1][iz].reset();
+			// m_mutexes[m_cellCount - 1][iz]->unlock();
+		}
+
+		// move one row (X)
+		for ( int ix =  m_cellCount - 1; ix > 0; ix-- )
+			for ( int iz = 0; iz < m_cellCount ; iz++ )
+			{
+				std::lock_guard<std::mutex> lock(*m_mutexes[ix][iz]);
+				std::lock_guard<std::mutex> lock2(*m_mutexes[ix-1][iz]);
+
+				// m_mutexes[ix][iz]->lock();
+				// m_mutexes[ix-1][iz]->lock();
+				m_terrain[ix][iz] = std::move(m_terrain[ix-1][iz]);
+				// m_mutexes[ix-1][iz]->unlock();
+				// m_mutexes[ix][iz]->unlock();
+			}
+
+		//fill the last X row
+		//TODO fill with position and offset from center instead of asking other cells for x,y
+		for ( int iz = 0; iz < m_cellCount ; iz++ )
+		{
+			std::lock_guard<std::mutex> lock(*m_mutexes[0][iz]);
+			// m_mutexes[0][iz]->lock();
+			m_terrain[0][iz] = std::make_unique<Chunk>(m_terrain[1][iz]->getTransform()->getAbsolutePos().x - m_cellSize,  m_terrain[1][iz]->getTransform()->getAbsolutePos().z , m_cellResolution, m_cellSize, m_noise);
+			// m_mutexes[0][iz]->unlock();
+		}
+	}
+	// std::cout << "moveX" << std::endl;
+//
+}
+void Landscape::moveZ(float _distance, const glm::vec3& _pos)
+{
+	// std::cout << "moveZ" << std::endl;
+	
+	if (_distance >= 0.f)
+	{
+		for ( int ix = 0; ix < m_cellCount ; ix++ )
+		{
+			std::lock_guard<std::mutex> lock(*m_mutexes[ix][0]);
+			m_terrain[ix][0].reset();
+		}
+
+		// move one row (Z)
+		for ( int ix = 0; ix < m_cellCount; ix++ )
+			for ( int iz = 0; iz < m_cellCount - 1; iz++ )
+			{
+				std::lock_guard<std::mutex> lock(*m_mutexes[ix][iz]);
+				std::lock_guard<std::mutex> lock2(*m_mutexes[ix][iz+1]);
+				m_terrain[ix][iz] = std::move(m_terrain[ix][iz+1]);
+			}
+
+		//fill the last X row
+		//TODO fill with position and offset from center instead of asking other cells for x,y
+		for ( int ix = 0; ix < m_cellCount ; ix++ )
+		{
+				std::lock_guard<std::mutex> lock(*m_mutexes[ix][m_cellCount - 1]);
+			m_terrain[ix][m_cellCount - 1] = std::make_unique<Chunk>(m_terrain[ix][m_cellCount -2]->getTransform()->getAbsolutePos().x,  m_terrain[ix][m_cellCount -2]->getTransform()->getAbsolutePos().z + m_cellSize , m_cellResolution, m_cellSize, m_noise);
+		}
+	}
+	else
+	{
+		for ( int ix = 0; ix < m_cellCount ; ix++ )
+		{
+			std::lock_guard<std::mutex> lock(*m_mutexes[ix][m_cellCount - 1]);
+			m_terrain[ix][m_cellCount - 1].reset();
+		}
+
+		// move one row (X)
+		for ( int ix =  0; ix < m_cellCount; ix++ )
+			for ( int iz = m_cellCount - 1; iz > 0 ; iz-- )
+			{
+				std::lock_guard<std::mutex> lock(*m_mutexes[ix][iz]);
+				std::lock_guard<std::mutex> lock2(*m_mutexes[ix][iz-1]);
+				m_terrain[ix][iz] = std::move(m_terrain[ix][iz-1]);
+			}
+
+		//fill the last X row
+		//TODO fill with position and offset from center instead of asking other cells for x,y
+		for ( int ix = 0; ix < m_cellCount ; ix++ )
+		{
+			std::lock_guard<std::mutex> lock(*m_mutexes[ix][0]);
+			m_terrain[ix][0] = std::make_unique<Chunk>(m_terrain[ix][1]->getTransform()->getAbsolutePos().x ,  m_terrain[ix][1]->getTransform()->getAbsolutePos().z - m_cellSize , m_cellResolution, m_cellSize, m_noise);
+		}
+	}
+	// else
+	// {
+	// 	for ( int i = m_cellCount -1 ; i >= 0; i-- )
+	// 	{
+	// 		m_terrain[i] = std::make_unique<Chunk>(m_terrain[i]->getTransform()->getAbsolutePos().x, m_terrain[i]->getTransform()->getAbsolutePos().z - m_cellSize, m_cellResolution, m_cellHigh, m_cellSize);
+	// 	}
+}
+
+
+void Landscape::render(const Tmatricies& _pipe) const
+{
+
+	m_skydome->draw(_pipe);
+
+
+	m_shader->bind();
+
+	for ( int i = 0; i < m_cellCount; i++ )
+		for ( int j = 0; j < m_cellCount; j++ )
+		{
+			if ( m_terrain[i][j] )
+			{
+				//TODO array of mutexec for every cell
+				// std::lock_guard<std::mutex> lock(*m_mutexes[i][j]);
+				m_mutexes[i][j]->lock();
+				if ( ! m_terrain[i][j]->dataRdy )
+				{
+					debug("ffuuu");
+					break;
+				}
+
+				// m_mutex->lock();
+				if ( ! m_terrain[i][j]->renderingRdy )
+					m_terrain[i][j]->createMesh();
+				 // m_mutex->unlock();
+
+				glm::vec3 pos = m_terrain[i][j]->getTransform()->getAbsolutePos();
+				_pipe.model = m_terrain[i][j]->getTransform()->getTransMat();
+				
+				m_shader->updateUniforms(_pipe, m_material);	
+				 // m_mutex->lock();
+				m_terrain[i][j]->m_mesh->draw();
+				m_mutexes[i][j]->unlock();
+				// m_mutex->unlock();
+				// std::cout << "terrain " << pos.x << std::endl;
+				
+			}
+
+		}
+	
+	
+
+}
+
+void Landscape::updateaa(float _delta)
+{
+	aa = true;
+	sf::Clock  clock ;
+	while(aa)
+	{
+		
+		//float elsin = sinf(clock.getElapsedTime().asSeconds() * 0.2f);
+		//float elcos = cosf(clock.getElapsedTime().asSeconds() * 0.2f);
+
+		// m_shader->setDirLight( DirectionalLight( BaseLight( glm::vec3 (1,0.8,0.7), 1.1f ), glm::vec3 ( -elsin , -elcos , -elsin) ));
+	// if ( ! m_parent)
+	// 	return;
+	
+
+	glm::vec3 pos = m_parent->getAbsolutePos();
+	int center = (int) m_cellCount / 2;
+
+
+	if (! m_terrain[1][1])
+	{
+		// return;
+		// continue;
+	}
+	// m_mutexes[1][1]->lock();
+	glm::vec3 centerpos = m_terrain[1][1]->getTransform()->getAbsolutePos();
+	// m_mutexes[1][1]->unlock();
+
+
+	float disX = pos.x - centerpos.x;
+	float disZ = pos.z - centerpos.z;
+
+	if ( pos.x > (centerpos.x + m_cellSize) || pos.x < centerpos.x)
+	{
+		// if ( updateThread.joinable() )
+		// {
+		// 	updateThread.join();
+		// 	updateThread = std::thread(&Landscape::moveX, this, disX, centerpos);
+		// }
+		moveX(disX, centerpos);
+	}
+
+	//if ( disZ >  m_cellSize || disZ < 0) 
+	if ( pos.z > (centerpos.z + m_cellSize) || pos.z < centerpos.z)
+	{
+		// if ( updateThread.joinable() )
+		// {
+		// 	updateThread.join();
+		// 	updateThread = std::thread(&Landscape::moveZ, this, disZ, centerpos);
+		// }
+	// 	if (! updating )
+	// 		updateThread = std::make_unique<std::thread>(&Landscape::moveX, this, disX, centerpos);
+	// 	else
+	// 		updateThread->join();
+		moveZ(disZ, centerpos);
+	}
+	// float halfCellSize = DFLT_SIZE * 0.5f;
+    //
+	 // std::cout << "parent: " << pos.x << " " << pos.y << " " << pos.z << std::endl;
+	 // for ( int i = 0; i < 3; i++ )
+	 // {centerpos = m_terrain[i]->getTransform()->getAbsolutePos();
+		//  std::cout << "landscape[" << i << "] " << centerpos.x << " " << centerpos.y << " " << centerpos.z << std::endl;
+	 // }
+	 // std::cout << std::endl;
+	 
+	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	} 
+	// bool r,l,u,d;
+	//  r = l = u = d = false;
+	// if (pos.x < centerpos.x )
+	// 	r = true;
+	// else if (pos.x > (centerpos.x - DFLT_SIZE))
+	// 	l = true;
+    //
+	// if (pos.z < centerpos.z)
+	// 	u = true;
+	// else if (pos.z < (centerpos.z - DFLT_SIZE))
+	// 	d = true;
+    //
+	// //if (r || l || u || d)
+	// //{
+	// //	m_terrain[1][1].reset();
+	// //	m_terrain[1][1] = std::make_unique<Chunk>(pos.x / DFLT_SIZE, pos.z / DFLT_SIZE, 32, 1, 500.f);
+	// //}
+	// moveTerrain(r, l, u, d);
+}
