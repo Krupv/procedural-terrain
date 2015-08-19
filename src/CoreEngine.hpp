@@ -30,16 +30,6 @@ public:
 	void start();
 	void addEntity(IEntity* _child, IEntity* _parent = nullptr);
 
-	// void addCamera()
-	// {
-	// 	m_renEngine->addCamera();
-	// }
-
-	// Camera* getMainCamera()
-	// {
-	// 	return m_renEngine->getCamera();
-    //
-	// }
 
 	RenderingEngine* getRenderingEngine() { return m_renEngine.get(); };
 

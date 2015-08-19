@@ -19,10 +19,10 @@ set(WIN_WARNINGS "/W4 /WX /EHsc")
 #BUILD TYPE
 #TEMP
 if (NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE "Debug")
+	set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-message("Using target: " ${CMAKE_BUILD_TYPE})
+message(STATUS "Using target: " ${CMAKE_BUILD_TYPE})
 
 if (CMAKE_BUILD_TYPE MATCHES "Debug")
 	add_definitions(-DDEBUG=1)
@@ -123,6 +123,8 @@ target_link_libraries(terrain
 	${SFML_LIBRARIES}
 	${SFML_DEPENDENCIES}
 	-llua
+	-lpthread
+	-lX11
 )
 
 

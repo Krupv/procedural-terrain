@@ -1,4 +1,5 @@
 window = {
-	w = 1920,
-	h = 1080
+	w = 1366,
+	h = 768,
+	title = "procedural-terrain"
 }

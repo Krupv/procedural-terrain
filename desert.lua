@@ -1,20 +1,19 @@
-octaves = 20
-persistence = 0.35
+octaves = 25
+persistence = 0.2
 scale = 0.001
 
 cell = {
-	size = 50000.0,
-	resolution = 128,
-	height = 1500.0,
-	--height = 1000.0,
-	LOD = 2,
+	size = 20000.0,
+	resolution = 100,
+	height = 300.0,
+	LOD = 4,
 }
 
 material = {
 	texture = {
-		low = "sand3.jpg",
-		hight = "desert.jpg"
+		low = "desert.jpg",
+		hight = "sand.jpg"
 	},
-	scale = 5.0
+	scale = 7.0
 
 }

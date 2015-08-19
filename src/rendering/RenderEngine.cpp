@@ -6,9 +6,7 @@
 #include "../entity/FreeMove.hpp"
 #include "../entity/FreeLook.hpp"
 
-#ifdef DEBUG
-	#include <SFML/Window/Keyboard.hpp> //for wireframe
-#endif // end of DEBUG
+#include <SFML/Window/Keyboard.hpp> //for wireframe
 
 
 
@@ -25,12 +23,7 @@ RenderingEngine::RenderingEngine (std::shared_ptr<IEntity>& _root, int _width, i
 	m_window = std::make_unique<DDisplay>(_width, _height, _title);
 
 	m_root = _root;
-#ifdef DEBUG
 	m_wireFrame = false;
-	
-#endif // end of DEBUG
-
-
 	
 }
 
@@ -76,7 +69,7 @@ void RenderingEngine::startThreaded (  )
 ////////////////////////////////////////////////////////////////////////////////
 void RenderingEngine::addCamera()
 {
-	m_cam = new Camera((float) m_window->getWidth() / (float) m_window->getHeight(), 70.f, 0.1f, 300000.f);
+	m_cam = new Camera((float) m_window->getWidth() / (float) m_window->getHeight(), 70.f, 0.5f, 100000.f);
 	m_cam->setPos( glm::vec3 (10000.f, 0.f, 10000.f));
 
 	addEntity(m_cam);
@@ -108,15 +101,15 @@ void RenderingEngine::step (  )
 	#ifdef DEBUG
 		if (m_thread)
 			assert ( std::this_thread::get_id() == m_thread->get_id() && "Rendering is already running in its own thread" );
-
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F))
-			 m_wireFrame = !m_wireFrame;
-
-		if (m_wireFrame)
-			glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-		else
-			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 	#endif // end of DEBUG
+
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F))
+		 m_wireFrame = !m_wireFrame;
+
+	if (m_wireFrame)
+		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	else
+		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 
 
 	Tmatricies pipe;
@@ -152,7 +145,7 @@ void RenderingEngine::addEntity(IEntity* _child, IEntity* _parent)
 
 // PRIVATE
 //------------------------------------------------------------------------------
-#include <iostream>
+//#include <iostream>
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,6 +159,7 @@ void RenderingEngine::run (  )
 	auto start = std::chrono::high_resolution_clock::now();
 	auto t1 = std::chrono::high_resolution_clock::now();
 
+	float min_time = 1E9f/60.f;
 
 
 	while (m_window->isRunning())
@@ -179,18 +173,27 @@ void RenderingEngine::run (  )
 
 
 		step();
-		
-//		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		t1 = std::chrono::high_resolution_clock::now();
-		 if ( (frame++ % 60) == 0)
-		 {
-		 	auto dur = t1 - start;
-		 	auto durSec = std::chrono::duration_cast<std::chrono::duration<float>>(dur);
-		 	std::cout << std::to_string((int) (frame / durSec.count())) << " " << std::flush;
-		 	//std::cout << "\r";// << std::endl;
-		 	frame = 0;
-		 	start = std::chrono::high_resolution_clock::now();
-		 }
+		float delay = std::chrono::duration_cast<std::chrono::nanoseconds>(start - t1).count();
+
+
+		if (delay < min_time)
+			std::this_thread::sleep_for(std::chrono::nanoseconds(static_cast<int>(min_time - delay)));
+
+		
+		 // if ( (frame++ % 60) == 0)
+		 // {
+		 // 	auto dur = t1 - start;
+		 // 	auto durSec = std::chrono::duration_cast<std::chrono::duration<float>>(dur);
+		 // 	//std::cout << std::to_string((int) (frame / durSec.count())) << " " << std::flush;
+		 // 	logmsg(std::to_string((int) (frame / durSec.count())));
+		 // 	//std::cout << "\r";// << std::endl;
+		 // 	frame = 0;
+		 //    start = std::chrono::high_resolution_clock::now();
+		 // }
+		start = std::chrono::high_resolution_clock::now();
+
+		
 
 	}
 }

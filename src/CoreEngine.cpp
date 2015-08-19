@@ -41,7 +41,7 @@ CoreEngine::~CoreEngine ()
 ////////////////////////////////////////////////////////////////////////////////
 void CoreEngine::start()
 {
-	// m_renEngine->startThreaded();
+	//m_renEngine->startThreaded();
 
 	while (m_renEngine->isRunning())
 	{
@@ -49,7 +49,7 @@ void CoreEngine::start()
 		this->update();
 		m_renEngine->step();
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
 	}
 

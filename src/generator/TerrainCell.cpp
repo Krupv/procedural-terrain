@@ -283,14 +283,14 @@ void TerrainCell::updateNode( const glm::vec3& _camPos)
 	tpos.x += (m_cellData.size  * 0.5f)+ m_cellData.rootOffX;
 	tpos.z += (m_cellData.size * 0.5f)+ m_cellData.rootOffZ;
 	//tpos.y += m_cellData.size * 0.5f;
-	float _dist = glm::distance(  glm::vec2 (_camPos.x, _camPos.z), glm::vec2 (tpos.x, tpos.z) );
-	//float _dist = glm::distance(_camPos, tpos);
+	//float _dist = glm::distance(  glm::vec2 (_camPos.x, _camPos.z), glm::vec2 (tpos.x, tpos.z) );
+	float _dist = glm::distance(_camPos, tpos);
 
 
 //#define P 4.f
 	//const float P = m_qtData->maxLOD ;
 	const float P = 1.f ;
-	//const float P = 1.5f ;
+	//const float P = 0.5f ;
 
 	if (!m_cellData.isLeaf)
 	{

@@ -4,7 +4,7 @@ scale = 0.00050
 power = false
 
 cell = {
-	size = 5000.0,
+	size = 20000.0,
 	resolution = 256,
 	height = 1500.0,
 	LOD = 1,
@@ -15,6 +15,6 @@ material = {
 		low = "grass5.jpg",
 		hight = "rock4K.jpg"
 	},
-	scale = 5.0
+	scale = 20.0
 
 }

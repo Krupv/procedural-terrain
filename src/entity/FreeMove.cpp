@@ -7,7 +7,7 @@
 
 // #include "../generator/noises/MyPerlin.hpp"
 
-#define SPRINT_SPEED 100.f
+#define SPRINT_SPEED 50.f
 #define GRAVITY -60.f
 
 // PUBLIC

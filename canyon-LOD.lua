@@ -4,10 +4,10 @@ scale = 0.00006
 power = true
 
 cell = {
-	size = 20000.0,
-	resolution = 256,
+	size = 30000.0,
+	resolution = 64,
 	height = 100.0,
-	LOD = 1,
+	LOD = 3,
 }
 
 material = {
@@ -15,6 +15,6 @@ material = {
 		low = "sand.jpg",
 		hight = "rock4K.jpg"
 	},
-	scale = 20.0
+	scale = 30.0
 
 }

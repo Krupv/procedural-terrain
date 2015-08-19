@@ -48,11 +48,7 @@ private:
 	//std::unique_ptr<IEntity> m_root;
 	std::shared_ptr<IEntity> m_root;
 
-#ifdef DEBUG
 	bool m_wireFrame;
-	
-#endif // end of DEBUG
-
 };
 
 

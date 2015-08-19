@@ -295,7 +295,7 @@ void Landscape::updateThreaded()
 	 runningThreaded = true;
 	 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Add))
 	 {
-		 m_sunPos += 0.05f;
+		 m_sunPos += 0.04f;
 		float elsin = sinf(m_sunPos);
 		float elcos = cosf(m_sunPos);
 
@@ -304,7 +304,7 @@ void Landscape::updateThreaded()
 	 }
 	 else if (sf::Keyboard::isKeyPressed( sf::Keyboard::Key::Subtract))
 	 {
-		 m_sunPos -= 0.05f;
+		 m_sunPos -= 0.04f;
 		float elsin = sinf(m_sunPos);
 		float elcos = cosf(m_sunPos);
 

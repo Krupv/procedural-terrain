@@ -30,9 +30,9 @@ uniform vec3 ambientLight;
 uniform DirectionalLight directionalLight;
 
 
-#define MAX_DETAIL_DISTANCE 600.0
-#define MAX_DETAIL_DISTANCE1 200.0
-#define MAX_HEIGHT 14000.0
+#define MAX_DETAIL_DISTANCE 800.0
+#define MAX_DETAIL_DISTANCE1 400.0
+#define MAX_HEIGHT 800.0
 
 vec4 calcLight(BaseLight base, vec3 direction, vec3 normal)
 {
@@ -69,14 +69,14 @@ void main()
 	{
 
 	  float alpha = clamp(cameraDistance / MAX_DETAIL_DISTANCE1, 0.0, 1.0);
-	  terrTextureColor0 = mix( texture2D(terrTexture0, detailTexCoord1), texture2D(terrTexture0, detailTexCoord0),alpha);
-	  terrTextureColor1 = mix( texture2D(terrTexture1, detailTexCoord1), texture2D(terrTexture1,detailTexCoord0), alpha);
+	  terrTextureColor0 = mix( texture2D(terrTexture0, detailTexCoord0), texture2D(terrTexture0, detailTexCoord1), 1.0 - alpha);
+	  terrTextureColor1 = mix( texture2D(terrTexture1, detailTexCoord0), texture2D(terrTexture1,detailTexCoord1), 1.0 - alpha);
 	}	
 	else if ( cameraDistance < MAX_DETAIL_DISTANCE)
 	{
 	  float alpha = clamp( (cameraDistance - MAX_DETAIL_DISTANCE1) / (MAX_DETAIL_DISTANCE-MAX_DETAIL_DISTANCE1), 0.0, 1.0);
-	  terrTextureColor0 = mix( texture2D(terrTexture0, texCoord0), texture2D(terrTexture0, detailTexCoord0),1.0- alpha);
-	  terrTextureColor1 = mix( texture2D(terrTexture1, texCoord0), texture2D(terrTexture1,detailTexCoord0), 1.0-alpha);
+	  terrTextureColor0 = mix( texture2D(terrTexture0, texCoord0), texture2D(terrTexture0, detailTexCoord0), 1.0 - alpha);
+	  terrTextureColor1 = mix( texture2D(terrTexture1, texCoord0), texture2D(terrTexture1,detailTexCoord0), 1.0 - alpha);
 	}
 	else
 	{
@@ -87,9 +87,7 @@ void main()
 
 	float heightWeight = clamp ( (height / MAX_HEIGHT) - 0.5, 0.0, 1.0);
 	tex0  = mix ( terrTextureColor0, terrTextureColor1, heightWeight);
-	//color *= mix ( terrTextureColor0, terrTextureColor1, heightWeight);
 
-	//color *= mix (terrTextureColor0, terrTextureColor1,  slope);
 	color *= mix (tex0, terrTextureColor1, slope);
 
 	totalLight += calcDirectionalLight(directionalLight, normal0);
@@ -98,11 +96,9 @@ void main()
 	vec4 fogColor = vec4(0.5,0.5,0.5, 0);
 	float dist = gl_FragCoord.z / gl_FragCoord.w;
 
-	//float fogFactor = 1.0 /exp( (dist * FogDensity)* (dist * FogDensity));
-	//fogFactor = clamp( fogFactor, 0.0, 1.0 );
 
 	//tmp commented
-	float fogFactor = (80000 - dist)/(80000 - 45000);
+	float fogFactor = (30000 - dist)/(30000 - 10000);
 	fogFactor = clamp( fogFactor, 0.0, 1.0 );
 
 

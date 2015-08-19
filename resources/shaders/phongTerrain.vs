@@ -17,7 +17,7 @@ uniform float texScale;
 uniform mat4 modelViewProjection;
 uniform mat4 model;
 
-#define DETAIL_SCALE 20.0
+#define DETAIL_SCALE 5.0
 
 void main()
 {
